@@ -53,8 +53,14 @@ func (n *Notifier) Flush() {
 func (n *Notifier) makeHandler() func([]PushMessage) {
 	return func(msgs []PushMessage) {
 		responses, err := n.client.sendRequest(msgs)
+		if err == nil && responses == nil {
+			return
+		}
+		if n.errorHandler == nil {
+			return
+		}
 		if err != nil {
-			if n.errorHandler != nil && n.errorHandler(msgs, err) == Retry {
+			if n.errorHandler(msgs, err) == Retry {
 				for _, msg := range msgs {
 					data, e := json.Marshal(msg)
 					if e != nil {
@@ -63,9 +69,6 @@ func (n *Notifier) makeHandler() func([]PushMessage) {
 					_ = n.buffer.Add(context.Background(), msg, len(data))
 				}
 			}
-			return
-		}
-		if n.errorHandler == nil {
 			return
 		}
 		for _, r := range responses {
