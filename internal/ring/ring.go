@@ -13,7 +13,7 @@ type Ring[T any] struct {
 // NewRing returns a Ring sized to hold byteLimit/byteThreshold items,
 // rounded up to the next power of 2.
 func NewRing[T any](limit, threshold int) Ring[T] {
-	return Ring[T]{buf: make([]T, cap(limit, threshold))}
+	return Ring[T]{buf: make([]T, capacity(limit, threshold))}
 }
 
 // Push appends v to the tail. If the buffer is full, the oldest item is overwritten.
@@ -38,7 +38,7 @@ func (r *Ring[T]) Pop() T {
 // Len returns the number of items currently in the buffer.
 func (r *Ring[T]) Len() int { return r.len }
 
-func cap(limit, threshold int) int {
+func capacity(limit, threshold int) int {
 	return roundUpPow2(limit / threshold)
 }
 

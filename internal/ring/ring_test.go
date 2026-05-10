@@ -18,7 +18,7 @@ func TestCap(t *testing.T) {
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			got := cap(tc.byteLimit, tc.byteThreshold)
+			got := capacity(tc.byteLimit, tc.byteThreshold)
 			if got != tc.want {
 				t.Errorf("cap(%d, %d) = %d, want %d", tc.byteLimit, tc.byteThreshold, got, tc.want)
 			}
