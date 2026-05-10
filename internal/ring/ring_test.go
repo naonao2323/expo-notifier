@@ -16,9 +16,9 @@ func TestCap(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run("", func(t *testing.T) {
-			got := Cap(tc.byteLimit, tc.byteThreshold)
+			got := cap(tc.byteLimit, tc.byteThreshold)
 			if got != tc.want {
-				t.Errorf("Cap(%d, %d) = %d, want %d", tc.byteLimit, tc.byteThreshold, got, tc.want)
+				t.Errorf("cap(%d, %d) = %d, want %d", tc.byteLimit, tc.byteThreshold, got, tc.want)
 			}
 		})
 	}
@@ -31,21 +31,24 @@ func TestRing(t *testing.T) {
 		wantLen int
 	}
 	tests := []struct {
-		name string
-		cap  int
-		ops  []op
+		name      string
+		limit     int
+		threshold int
+		ops       []op
 	}{
 		{
-			name: "single push/pop",
-			cap:  4,
+			name:      "single push/pop",
+			limit:     16,
+			threshold: 4,
 			ops: []op{
 				{"push", 1, 1},
 				{"pop", 1, 0},
 			},
 		},
 		{
-			name: "FIFO order",
-			cap:  4,
+			name:      "FIFO order",
+			limit:     16,
+			threshold: 4,
 			ops: []op{
 				{"push", 1, 1},
 				{"push", 2, 2},
@@ -56,8 +59,9 @@ func TestRing(t *testing.T) {
 			},
 		},
 		{
-			name: "overwrite on overflow",
-			cap:  4,
+			name:      "overwrite on overflow",
+			limit:     16,
+			threshold: 4,
 			ops: []op{
 				{"push", 1, 1},
 				{"push", 2, 2},
@@ -71,8 +75,9 @@ func TestRing(t *testing.T) {
 			},
 		},
 		{
-			name: "wrap-around",
-			cap:  4,
+			name:      "wrap-around",
+			limit:     16,
+			threshold: 4,
 			ops: []op{
 				{"push", 1, 1},
 				{"push", 2, 2},
@@ -91,7 +96,7 @@ func TestRing(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			r := New[int](tc.cap)
+			r := NewRing[int](tc.limit, tc.threshold)
 			for i, o := range tc.ops {
 				switch o.kind {
 				case "push":
