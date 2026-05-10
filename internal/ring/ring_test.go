@@ -10,19 +10,18 @@ func TestRing(t *testing.T) {
 		wantLen int
 	}
 	tests := map[string]struct {
-		limit     int
-		threshold int
-		ops       []op
+		cap int
+		ops []op
 	}{
 		"single push/pop": {
-			limit: 16, threshold: 4,
+			cap: 4,
 			ops: []op{
 				{"push", 1, 1},
 				{"pop", 1, 0},
 			},
 		},
 		"FIFO order": {
-			limit: 16, threshold: 4,
+			cap: 4,
 			ops: []op{
 				{"push", 1, 1},
 				{"push", 2, 2},
@@ -33,7 +32,7 @@ func TestRing(t *testing.T) {
 			},
 		},
 		"overwrite on overflow": {
-			limit: 16, threshold: 4,
+			cap: 4,
 			ops: []op{
 				{"push", 1, 1},
 				{"push", 2, 2},
@@ -47,7 +46,7 @@ func TestRing(t *testing.T) {
 			},
 		},
 		"wrap-around": {
-			limit: 16, threshold: 4,
+			cap: 4,
 			ops: []op{
 				{"push", 1, 1},
 				{"push", 2, 2},
@@ -67,7 +66,7 @@ func TestRing(t *testing.T) {
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			r := NewRing[int](tc.limit, tc.threshold)
+			r := New[int](tc.cap)
 			for i, o := range tc.ops {
 				switch o.kind {
 				case "push":
