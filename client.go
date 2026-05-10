@@ -63,7 +63,7 @@ func (c *Client) sendRequest(messages []PushMessage) ([]PushResponse, error) {
 }
 
 func checkStatus(resp *http.Response) error {
-	if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
+	if resp.StatusCode >= http.StatusOK && resp.StatusCode <= http.StatusIMUsed {
 		return nil
 	}
 	return &PushServerError{
