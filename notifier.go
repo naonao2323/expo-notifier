@@ -1,55 +1,50 @@
 package exponotifier
 
 import (
-	"bytes"
+	"context"
 	"encoding/json"
-	"errors"
-	"fmt"
-	"net/http"
 )
 
-// Notify sends a single push notification and returns the push response.
-func (n *Notifier) Notify(message PushMessage) (PushResponse, error) {
-	if message.To == "" {
-		return PushResponse{}, errors.New("no recipient")
-	}
-	resp, err := n.notify(message)
-	if err != nil {
-		return PushResponse{}, err
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return PushResponse{}, fmt.Errorf("invalid response (%d %s)", resp.StatusCode, resp.Status)
-	}
-	var r response
-	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
-		return PushResponse{}, err
-	}
-	if r.Errors != nil {
-		return PushResponse{}, &PushServerError{Message: "invalid server response", Response: resp, ResponseData: &r, Err: r.Errors}
-	}
-	if len(r.Data) == 0 {
-		return PushResponse{}, &PushServerError{Message: "invalid server response", Response: resp, ResponseData: &r}
-	}
-	result := r.Data[0]
-	result.PushMessage = message
-	return result, nil
+// Notifier sends Expo push notifications via a buffer.
+type Notifier struct {
+	client        *Client
+	buffer        *Buffer
+	bufferSetting BufferSetting
 }
 
-func (n *Notifier) notify(message PushMessage) (*http.Response, error) {
-	url := fmt.Sprintf("%s%s/push/send", n.host, n.url)
-	body, err := json.Marshal(message)
+// NewNotifier creates a Notifier with the given options. A buffer is always initialized.
+func NewNotifier(opts ...Option) *Notifier {
+	n := &Notifier{
+		client: &Client{
+			httpClient: DefaultHTTPClient,
+			host:       DefaultHost,
+			url:        DefaultBaseAPIURL,
+		},
+		bufferSetting: BufferSetting{
+			DelayThreshold:    DefaultDelayThreshold,
+			CountThreshold:    DefaultCountThreshold,
+			ByteThreshold:     DefaultByteThreshold,
+			BufferedByteLimit: DefaultBufferedByteLimit,
+			WorkerLimit:       DefaultWorkerLimit,
+		},
+	}
+	for _, opt := range opts {
+		opt(n)
+	}
+	n.buffer = NewBuffer(n.client.sendRequest, n.bufferSetting)
+	return n
+}
+
+// Add enqueues msg into the buffer. Blocks until byte capacity is available or ctx is done.
+func (n *Notifier) Add(ctx context.Context, msg PushMessage) error {
+	data, err := json.Marshal(msg)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	if n.accessToken != "" {
-		req.Header.Set("Authorization", "Bearer "+n.accessToken)
-	}
-	return n.client.Do(req)
+	return n.buffer.Add(ctx, msg, len(data))
+}
+
+// Flush drains all buffered messages and waits for all batch sends to complete.
+func (n *Notifier) Flush() {
+	n.buffer.Flush()
 }
