@@ -37,11 +37,6 @@ func (r *Ring[T]) Pop() T {
 // Len returns the number of items currently in the buffer.
 func (r *Ring[T]) Len() int { return r.len }
 
-// Cap returns the next power-of-2 capacity for byteLimit/byteThreshold items.
-func Cap(byteLimit, byteThreshold int) int {
-	return roundUpPow2(byteLimit / byteThreshold)
-}
-
 func roundUpPow2(n int) int {
 	if n < 1 {
 		n = 1

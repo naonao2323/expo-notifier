@@ -2,28 +2,6 @@ package ring
 
 import "testing"
 
-func TestCap(t *testing.T) {
-	tests := []struct {
-		byteLimit     int
-		byteThreshold int
-		want          int
-	}{
-		{16, 4, 4},
-		{20, 4, 8},
-		{1 << 30, 1 << 20, 1024},
-		{7, 2, 4},
-		{0, 1, 1},
-	}
-	for _, tc := range tests {
-		t.Run("", func(t *testing.T) {
-			got := Cap(tc.byteLimit, tc.byteThreshold)
-			if got != tc.want {
-				t.Errorf("Cap(%d, %d) = %d, want %d", tc.byteLimit, tc.byteThreshold, got, tc.want)
-			}
-		})
-	}
-}
-
 func TestRing(t *testing.T) {
 	type op struct {
 		kind    string // "push" or "pop"
