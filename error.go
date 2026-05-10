@@ -1,14 +1,9 @@
 package exponotifier
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 )
-
-// ErrMalformedToken is returned when a push token does not start with "ExponentPushToken".
-var ErrMalformedToken = errors.New("token should start with ExponentPushToken")
 
 const (
 	// SuccessStatus is the status value returned by Expo on a successful notification.
@@ -20,24 +15,6 @@ const (
 	// ErrorMessageRateExceeded indicates messages are being sent too frequently.
 	ErrorMessageRateExceeded = "MessageRateExceeded"
 )
-
-type apiErrors []map[string]string
-
-func (e apiErrors) Error() string {
-	msgs := make([]string, len(e))
-	for i, m := range e {
-		msgs[i] = fmt.Sprintf("%v", m)
-	}
-	return strings.Join(msgs, "\n")
-}
-
-func (e apiErrors) Unwrap() []error {
-	errs := make([]error, len(e))
-	for i, m := range e {
-		errs[i] = fmt.Errorf("%v", m)
-	}
-	return errs
-}
 
 func (r *PushResponse) isSuccess() bool {
 	return r.Status == SuccessStatus
@@ -83,12 +60,19 @@ type MessageTooBigError struct{ PushResponseError }
 // MessageRateExceededError is returned when messages are sent too frequently to a device.
 type MessageRateExceededError struct{ PushResponseError }
 
+// RequestError is returned when the HTTP request to Expo fails due to a network or transport error.
+type RequestError struct {
+	Err error
+}
+
+func (e *RequestError) Error() string { return e.Err.Error() }
+func (e *RequestError) Unwrap() error { return e.Err }
+
 // PushServerError is returned when the Expo push server returns an unexpected error response.
 type PushServerError struct {
-	Message      string
-	Response     *http.Response
-	ResponseData *response
-	Err          error
+	Message  string
+	Response *http.Response
+	Err      error
 }
 
 func (e *PushServerError) Error() string { return e.Message }

@@ -26,27 +26,51 @@ type Client struct {
 	accessToken string
 }
 
-// sendRequest sends messages to the Expo push API; errors are silently dropped.
-// Its signature matches the func([]PushMessage) handler expected by Buffer.
-func (c *Client) sendRequest(messages []PushMessage) {
+// sendRequest sends messages to the Expo push API and returns responses or an error.
+func (c *Client) sendRequest(messages []PushMessage) ([]PushResponse, error) {
 	if len(messages) == 0 {
-		return
+		return nil, nil
 	}
 	body, err := json.Marshal(messages)
 	if err != nil {
-		return
+		return nil, &RequestError{Err: fmt.Errorf("failed to marshal messages: %w", err)}
 	}
 	req, err := c.newPushRequest(body)
 	if err != nil {
-		return
+		return nil, &RequestError{Err: fmt.Errorf("failed to build request: %w", err)}
 	}
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return
+		return nil, &RequestError{Err: fmt.Errorf("request failed: %w", err)}
 	}
 	defer func() { _ = resp.Body.Close() }()
+	if err := checkStatus(resp); err != nil {
+		return nil, err
+	}
 	var r response
-	_ = json.NewDecoder(resp.Body).Decode(&r)
+	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
+		return nil, err
+	}
+	if len(r.Errors) > 0 {
+		return nil, &PushServerError{Message: r.Errors.Error(), Err: fmt.Errorf("push server error: %w", r.Errors)}
+	}
+	for i := range r.Data {
+		if i < len(messages) {
+			r.Data[i].PushMessage = messages[i]
+		}
+	}
+	return r.Data, nil
+}
+
+func checkStatus(resp *http.Response) error {
+	if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
+		return nil
+	}
+	return &PushServerError{
+		Message:  fmt.Sprintf("invalid response (%d %s)", resp.StatusCode, resp.Status),
+		Response: resp,
+		Err:      fmt.Errorf("%d %s", resp.StatusCode, resp.Status),
+	}
 }
 
 func (c *Client) newPushRequest(body []byte) (*http.Request, error) {
