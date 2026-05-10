@@ -3,9 +3,10 @@ package exponotifier
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"net/http"
+
+	"github.com/bytedance/sonic"
 )
 
 const (
@@ -31,7 +32,7 @@ func (c *Client) sendRequest(messages []PushMessage) ([]PushResponse, error) {
 	if len(messages) == 0 {
 		return nil, nil
 	}
-	body, err := json.Marshal(messages)
+	body, err := sonic.Marshal(messages)
 	if err != nil {
 		return nil, &RequestError{Err: fmt.Errorf("failed to marshal messages: %w", err)}
 	}
@@ -48,7 +49,7 @@ func (c *Client) sendRequest(messages []PushMessage) ([]PushResponse, error) {
 		return nil, err
 	}
 	var r response
-	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
+	if err := sonic.ConfigDefault.NewDecoder(resp.Body).Decode(&r); err != nil {
 		return nil, err
 	}
 	if len(r.Errors) > 0 {
