@@ -3,27 +3,26 @@ package ring
 import "testing"
 
 func TestRing(t *testing.T) {
+	t.Parallel()
 	type op struct {
 		kind    string // "push" or "pop"
 		val     int    // value to push, or expected value on pop
 		wantLen int
 	}
-	tests := []struct {
-		name string
-		cap  int
-		ops  []op
+	tests := map[string]struct {
+		limit     int
+		threshold int
+		ops       []op
 	}{
-		{
-			name: "single push/pop",
-			cap:  4,
+		"single push/pop": {
+			limit: 16, threshold: 4,
 			ops: []op{
 				{"push", 1, 1},
 				{"pop", 1, 0},
 			},
 		},
-		{
-			name: "FIFO order",
-			cap:  4,
+		"FIFO order": {
+			limit: 16, threshold: 4,
 			ops: []op{
 				{"push", 1, 1},
 				{"push", 2, 2},
@@ -33,9 +32,8 @@ func TestRing(t *testing.T) {
 				{"pop", 3, 0},
 			},
 		},
-		{
-			name: "overwrite on overflow",
-			cap:  4,
+		"overwrite on overflow": {
+			limit: 16, threshold: 4,
 			ops: []op{
 				{"push", 1, 1},
 				{"push", 2, 2},
@@ -48,9 +46,8 @@ func TestRing(t *testing.T) {
 				{"pop", 4, 0},
 			},
 		},
-		{
-			name: "wrap-around",
-			cap:  4,
+		"wrap-around": {
+			limit: 16, threshold: 4,
 			ops: []op{
 				{"push", 1, 1},
 				{"push", 2, 2},
@@ -67,9 +64,10 @@ func TestRing(t *testing.T) {
 			},
 		},
 	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			r := New[int](tc.cap)
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			r := NewRing[int](tc.limit, tc.threshold)
 			for i, o := range tc.ops {
 				switch o.kind {
 				case "push":
