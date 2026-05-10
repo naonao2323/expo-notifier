@@ -2,30 +2,6 @@ package ring
 
 import "testing"
 
-func TestCap(t *testing.T) {
-	t.Parallel()
-	tests := map[string]struct {
-		byteLimit     int
-		byteThreshold int
-		want          int
-	}{
-		"exact power of 2":  {16, 4, 4},
-		"rounds up":         {20, 4, 8},
-		"large values":      {1 << 30, 1 << 20, 1024},
-		"non-power divisor": {7, 2, 4},
-		"zero limit":        {0, 1, 1},
-	}
-	for name, tc := range tests {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			got := capacity(tc.byteLimit, tc.byteThreshold)
-			if got != tc.want {
-				t.Errorf("cap(%d, %d) = %d, want %d", tc.byteLimit, tc.byteThreshold, got, tc.want)
-			}
-		})
-	}
-}
-
 func TestRing(t *testing.T) {
 	t.Parallel()
 	type op struct {
@@ -34,19 +10,18 @@ func TestRing(t *testing.T) {
 		wantLen int
 	}
 	tests := map[string]struct {
-		limit     int
-		threshold int
-		ops       []op
+		cap int
+		ops []op
 	}{
 		"single push/pop": {
-			limit: 16, threshold: 4,
+			cap: 4,
 			ops: []op{
 				{"push", 1, 1},
 				{"pop", 1, 0},
 			},
 		},
 		"FIFO order": {
-			limit: 16, threshold: 4,
+			cap: 4,
 			ops: []op{
 				{"push", 1, 1},
 				{"push", 2, 2},
@@ -57,7 +32,7 @@ func TestRing(t *testing.T) {
 			},
 		},
 		"overwrite on overflow": {
-			limit: 16, threshold: 4,
+			cap: 4,
 			ops: []op{
 				{"push", 1, 1},
 				{"push", 2, 2},
@@ -71,7 +46,7 @@ func TestRing(t *testing.T) {
 			},
 		},
 		"wrap-around": {
-			limit: 16, threshold: 4,
+			cap: 4,
 			ops: []op{
 				{"push", 1, 1},
 				{"push", 2, 2},
@@ -91,7 +66,7 @@ func TestRing(t *testing.T) {
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			r := NewRing[int](tc.limit, tc.threshold)
+			r := New[int](tc.cap)
 			for i, o := range tc.ops {
 				switch o.kind {
 				case "push":

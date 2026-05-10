@@ -18,11 +18,25 @@ const (
 	DefaultCountThreshold    = 10
 	DefaultByteThreshold     = 1 << 20 // 1MB
 	DefaultBufferedByteLimit = 1 << 30 // 1GB
+	DefaultMinItemBytes      = 128
 	DefaultWorkerLimit       = 1
 )
 
 // ErrOversizedItem is returned by Add when the item size exceeds BufferedByteLimit.
 var ErrOversizedItem = errors.New("buffer: item size exceeds byte limit")
+
+func bufferRingCap(byteLimit, byteThreshold, countThreshold, minItemBytes int) int {
+	byteCapacity := divPositive(byteLimit, byteThreshold)
+	countCapacity := divPositive(divPositive(byteLimit, countThreshold), minItemBytes)
+	return max(byteCapacity, countCapacity, 1)
+}
+
+func divPositive(n, d int) int {
+	if n <= 0 || d <= 0 {
+		return 0
+	}
+	return n / d
+}
 
 type bundle struct {
 	msgs  []PushMessage
@@ -66,7 +80,7 @@ func NewBuffer(handler func([]PushMessage), setting BufferSetting) *Buffer {
 		b.WorkerLimit = DefaultWorkerLimit
 	}
 	b.sem = semaphore.NewWeighted(int64(b.BufferedByteLimit))
-	r := ring.NewRing[bundle](b.BufferedByteLimit, b.ByteThreshold)
+	r := ring.New[bundle](bufferRingCap(b.BufferedByteLimit, b.ByteThreshold, b.CountThreshold, DefaultMinItemBytes))
 	b.sched = scheduler.New(&r, b.WorkerLimit, func(bdl bundle) {
 		b.sem.Release(int64(bdl.bytes))
 		b.handler(bdl.msgs)
@@ -77,6 +91,9 @@ func NewBuffer(handler func([]PushMessage), setting BufferSetting) *Buffer {
 // Add enqueues msg. Blocks until byte capacity is available or ctx is done.
 // Returns ErrOversizedItem if size exceeds ByteLimit, or ctx.Err() if cancelled.
 func (b *Buffer) Add(ctx context.Context, msg PushMessage, size int) error {
+	if size < DefaultMinItemBytes {
+		size = DefaultMinItemBytes
+	}
 	if size > b.BufferedByteLimit {
 		return ErrOversizedItem
 	}
