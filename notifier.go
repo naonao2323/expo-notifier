@@ -2,7 +2,6 @@ package exponotifier
 
 import (
 	"context"
-	"encoding/json"
 )
 
 // Notifier sends Expo push notifications via a buffer.
@@ -38,11 +37,8 @@ func NewNotifier(opts ...Option) *Notifier {
 
 // Add enqueues msg into the buffer. Blocks until byte capacity is available or ctx is done.
 func (n *Notifier) Add(ctx context.Context, msg PushMessage) error {
-	data, err := json.Marshal(msg)
-	if err != nil {
-		return err
-	}
-	return n.buffer.Add(ctx, msg, len(data))
+	size := len(msg.Body) + len(msg.Title) + len(msg.Data)*64 + 128
+	return n.buffer.Add(ctx, msg, size)
 }
 
 // Flush drains all buffered messages and waits for all batch sends to complete.
@@ -62,11 +58,7 @@ func (n *Notifier) makeHandler() func([]PushMessage) {
 		if err != nil {
 			if n.errorHandler(msgs, err) == Retry {
 				for _, msg := range msgs {
-					data, e := json.Marshal(msg)
-					if e != nil {
-						continue
-					}
-					_ = n.buffer.Add(context.Background(), msg, len(data))
+					_ = n.Add(context.Background(), msg)
 				}
 			}
 			return
@@ -74,10 +66,7 @@ func (n *Notifier) makeHandler() func([]PushMessage) {
 		for _, r := range responses {
 			if perMsgErr := r.ValidateResponse(); perMsgErr != nil {
 				if n.errorHandler([]PushMessage{r.PushMessage}, perMsgErr) == Retry {
-					data, e := json.Marshal(r.PushMessage)
-					if e == nil {
-						_ = n.buffer.Add(context.Background(), r.PushMessage, len(data))
-					}
+					_ = n.Add(context.Background(), r.PushMessage)
 				}
 			}
 		}
