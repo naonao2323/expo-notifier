@@ -1,6 +1,10 @@
 package exponotifier
 
-import "strings"
+import (
+	"errors"
+	"fmt"
+	"strings"
+)
 
 const (
 	// DefaultPriority is the standard delivery priority for push messages.
@@ -13,6 +17,9 @@ const (
 
 // ExponentPushToken is a validated Expo push token.
 type ExponentPushToken string
+
+// ErrMalformedToken is returned when a push token does not start with "ExponentPushToken".
+var ErrMalformedToken = errors.New("token should start with ExponentPushToken")
 
 // NewExponentPushToken returns a validated ExponentPushToken or an error if the token is malformed.
 func NewExponentPushToken(token string) (ExponentPushToken, error) {
@@ -48,4 +55,22 @@ type PushResponse struct {
 	Status      string            `json:"status"`
 	Message     string            `json:"message"`
 	Details     map[string]string `json:"details"`
+}
+
+type apiErrors []map[string]string
+
+func (e apiErrors) Error() string {
+	msgs := make([]string, len(e))
+	for i, m := range e {
+		msgs[i] = fmt.Sprintf("%v", m)
+	}
+	return strings.Join(msgs, "\n")
+}
+
+func (e apiErrors) Unwrap() []error {
+	errs := make([]error, len(e))
+	for i, m := range e {
+		errs[i] = fmt.Errorf("%v", m)
+	}
+	return errs
 }

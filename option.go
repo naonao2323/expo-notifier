@@ -47,6 +47,27 @@ type BufferSetting struct {
 	WorkerLimit       int
 }
 
+// RetryDecision is the return value of an ErrorHandler.
+type RetryDecision bool
+
+const (
+	// Retry re-enqueues the failed messages into the buffer.
+	Retry RetryDecision = true
+	// NoRetry discards the failed messages.
+	NoRetry RetryDecision = false
+)
+
+// ErrorHandler is called when a batch send fails (network error, non-2xx status, API error)
+// or when individual push responses indicate delivery failures.
+// Return Retry to re-enqueue msgs into the buffer, or NoRetry to discard them.
+type ErrorHandler func(msgs []PushMessage, err error) RetryDecision
+
+// WithErrorHandler sets a callback invoked on send failures.
+// Without this option, errors are silently dropped.
+func WithErrorHandler(h ErrorHandler) Option {
+	return func(n *Notifier) { n.errorHandler = h }
+}
+
 // BufferOption is a functional option for configuring a BufferSetting.
 type BufferOption func(*BufferSetting)
 
