@@ -10,9 +10,10 @@ type Ring[T any] struct {
 	len  int
 }
 
-// New returns a Ring backed by a buffer of the next power-of-2 size >= n.
-func New[T any](n int) Ring[T] {
-	return Ring[T]{buf: make([]T, roundUpPow2(n))}
+// NewRing returns a Ring sized to hold byteLimit/byteThreshold items,
+// rounded up to the next power of 2.
+func NewRing[T any](limit, threshold int) Ring[T] {
+	return Ring[T]{buf: make([]T, capacity(limit, threshold))}
 }
 
 // Push appends v to the tail. If the buffer is full, the oldest item is overwritten.
