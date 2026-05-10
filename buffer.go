@@ -66,7 +66,7 @@ func NewBuffer(handler func([]PushMessage), setting BufferSetting) *Buffer {
 		b.WorkerLimit = DefaultWorkerLimit
 	}
 	b.sem = semaphore.NewWeighted(int64(b.BufferedByteLimit))
-	r := ring.New[bundle](ring.Cap(b.BufferedByteLimit, b.ByteThreshold))
+	r := ring.NewRing[bundle](b.BufferedByteLimit, b.ByteThreshold)
 	b.sched = scheduler.New(&r, b.WorkerLimit, func(bdl bundle) {
 		b.sem.Release(int64(bdl.bytes))
 		b.handler(bdl.msgs)
