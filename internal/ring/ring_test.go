@@ -3,19 +3,21 @@ package ring
 import "testing"
 
 func TestCap(t *testing.T) {
-	tests := []struct {
+	t.Parallel()
+	tests := map[string]struct {
 		byteLimit     int
 		byteThreshold int
 		want          int
 	}{
-		{16, 4, 4},
-		{20, 4, 8},
-		{1 << 30, 1 << 20, 1024},
-		{7, 2, 4},
-		{0, 1, 1},
+		"exact power of 2":  {16, 4, 4},
+		"rounds up":         {20, 4, 8},
+		"large values":      {1 << 30, 1 << 20, 1024},
+		"non-power divisor": {7, 2, 4},
+		"zero limit":        {0, 1, 1},
 	}
-	for _, tc := range tests {
-		t.Run("", func(t *testing.T) {
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			got := cap(tc.byteLimit, tc.byteThreshold)
 			if got != tc.want {
 				t.Errorf("cap(%d, %d) = %d, want %d", tc.byteLimit, tc.byteThreshold, got, tc.want)
@@ -25,30 +27,26 @@ func TestCap(t *testing.T) {
 }
 
 func TestRing(t *testing.T) {
+	t.Parallel()
 	type op struct {
 		kind    string // "push" or "pop"
 		val     int    // value to push, or expected value on pop
 		wantLen int
 	}
-	tests := []struct {
-		name      string
+	tests := map[string]struct {
 		limit     int
 		threshold int
 		ops       []op
 	}{
-		{
-			name:      "single push/pop",
-			limit:     16,
-			threshold: 4,
+		"single push/pop": {
+			limit: 16, threshold: 4,
 			ops: []op{
 				{"push", 1, 1},
 				{"pop", 1, 0},
 			},
 		},
-		{
-			name:      "FIFO order",
-			limit:     16,
-			threshold: 4,
+		"FIFO order": {
+			limit: 16, threshold: 4,
 			ops: []op{
 				{"push", 1, 1},
 				{"push", 2, 2},
@@ -58,10 +56,8 @@ func TestRing(t *testing.T) {
 				{"pop", 3, 0},
 			},
 		},
-		{
-			name:      "overwrite on overflow",
-			limit:     16,
-			threshold: 4,
+		"overwrite on overflow": {
+			limit: 16, threshold: 4,
 			ops: []op{
 				{"push", 1, 1},
 				{"push", 2, 2},
@@ -74,10 +70,8 @@ func TestRing(t *testing.T) {
 				{"pop", 4, 0},
 			},
 		},
-		{
-			name:      "wrap-around",
-			limit:     16,
-			threshold: 4,
+		"wrap-around": {
+			limit: 16, threshold: 4,
 			ops: []op{
 				{"push", 1, 1},
 				{"push", 2, 2},
@@ -94,8 +88,9 @@ func TestRing(t *testing.T) {
 			},
 		},
 	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			r := NewRing[int](tc.limit, tc.threshold)
 			for i, o := range tc.ops {
 				switch o.kind {
